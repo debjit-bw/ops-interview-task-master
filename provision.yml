@@ -1,0 +1,165 @@
+---
+- name: Provision and Configure VM
+  hosts: all
+  become: yes
+
+  # Setup hostname of VM as demo-ops
+  tasks:
+    # Sets hostname of VM as demo-ops
+    - name: Set hostname
+      hostname:
+        name: demo-ops
+
+    # Create user demo with demo/password
+    - name: Create user demo
+      user:
+        name: demo
+        password: $2y$10$dt/K4vOwsAKRBx1/UuXgleFQJwjmoVPOJvOLpPy2NhFCY00bXhd7S
+
+    - name: Disable root login
+      lineinfile:
+        dest: /etc/ssh/sshd_config
+        line: PermitRootLogin no
+
+    - name: update apt
+      apt:
+        update_cache: yes
+
+    - name: Configure UFW (Uncomplicated Firewall)
+      apt:
+        name:
+          - iptables
+          - ufw
+        state: present
+      when: ansible_distribution == 'Ubuntu'
+
+    # - name: Allow SSH through UFW
+    #   ufw:
+    #     rule: allow
+    #     port: 22
+    #     proto: tcp
+    #   when: ansible_distribution == 'Ubuntu'
+
+    - name: Configure sysctl for sane defaults (Increase open files limit)
+      lineinfile:
+        dest: /etc/sysctl.conf
+        line: fs.file-max = 65536
+      notify: Reload sysctl
+      tags:
+        - sysctl
+    
+    - name: Configure sysctl for sane defaults
+      lineinfile:
+        dest: /etc/sysctl.conf
+        line: net.core.somaxconn = 65536
+
+    - name: Install tzdata
+      apt:
+        name: tzdata
+        state: present
+
+    - name: Set system timezone to "Asia/Kolkata"
+      timezone:
+        name: Asia/Kolkata
+
+    # Docker installation starts here (we install from the official Docker repository)
+    - name: Install required system packages
+      apt:
+        pkg:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+          - python3-pip
+          - virtualenv
+          - python3-setuptools
+        state: latest
+        update_cache: true
+
+    - name: Add Docker GPG apt Key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker Repository
+      apt_repository:
+        repo: deb https://download.docker.com/linux/ubuntu focal stable
+        state: present
+
+    - name: Update apt and install docker-ce
+      apt:
+        name: docker-ce
+        state: latest
+        update_cache: true
+
+    # Docker API for Python
+    - name: Install Docker Module for Python
+      pip:
+        name: docker
+
+    # Start the Docker daemon if it's not already running
+    - name: Start Docker service
+      command: service docker start
+      become: yes
+      become_method: sudo
+
+    - name: Install Docker Compose Dep
+      pip:
+        name:
+          - pyyaml==5.4.1
+        extra_args: --no-cache-dir --no-build-isolation
+        state: present
+    
+    - name: Install Docker Compose
+      pip:
+        name: docker-compose
+        state: present
+
+    - name: create directory with parent directories
+      file:
+        path: /etc/docker
+        state: directory
+
+    - name: Configure Docker Daemon
+      template:
+        src: docker-daemon.json.j2
+        dest: /etc/docker/daemon.json
+      notify: Restart Docker
+      tags:
+        - docker
+
+    - name: create directory with parent directories
+      file:
+        path: /etc/demo-ops
+        state: directory
+      
+    - name: Copy important files over
+      copy:
+        src:
+          - nginx.conf
+          - ssl/
+        dest: /etc/nginx/
+
+    - name: Deploy docker-compose.yml and start services
+      copy:
+        src: docker-compose.yml
+        dest: /etc/demo-ops/docker-compose.yml
+      notify: Restart Docker Compose
+      tags:
+        - docker-compose
+
+  # Handlers section
+  handlers:
+    - name: Reload sysctl
+      command: sysctl -p
+      listen: Reload sysctl
+
+    - name: Restart Docker
+      service:
+        name: docker
+        state: restarted
+      listen: Restart Docker
+
+    - name: Restart Docker Compose
+      command: docker-compose -f /etc/demo-ops/docker-compose.yml up -d
+      listen: Restart Docker Compose

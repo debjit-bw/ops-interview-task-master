@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set the Vagrant box name
-VAGRANT_BOX_NAME="tknerr/baseimage-ubuntu-22.04"
+VAGRANT_BOX_NAME="ubuntu/bionic64"
 
 # Check if Vagrant is installed
 if ! command -v vagrant >/dev/null; then
@@ -9,16 +9,16 @@ if ! command -v vagrant >/dev/null; then
   exit 1
 fi
 
-# Check if Docker is installed
-if ! command -v docker >/dev/null; then
-  echo "Docker is not installed. Please install Docker and try again."
+# Check if VirtualBox is installed
+if ! command -v virtualbox >/dev/null; then
+  echo "VirtualBox is not installed. Please install VirtualBox and try again."
   exit 1
 fi
 
 # Check if the Vagrant box is installed
 if ! vagrant box list | grep -q "$VAGRANT_BOX_NAME"; then
   echo "The Vagrant box '$VAGRANT_BOX_NAME' is not installed. Installing now..."
-  vagrant box add "$VAGRANT_BOX_NAME" --provider docker
+  vagrant box add "$VAGRANT_BOX_NAME"
 fi
 
 # Create a Vagrantfile
@@ -44,7 +44,7 @@ fi
 # Check if the Vagrant box is running
 if ! vagrant status | grep -q "running"; then
   echo "Starting the Vagrant box..."
-  vagrant up --provider docker
+  vagrant up
 else
 # Start the Vagrant box
   echo "The Vagrant box is already running. Cheers!"

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set the Vagrant box name
-VAGRANT_BOX_NAME="ubuntu/bionic64"
+VAGRANT_BOX_NAME="ubuntu/focal64"
 
 # Check if Vagrant is installed
 if ! command -v vagrant >/dev/null; then
@@ -28,7 +28,7 @@ if [ ! -f Vagrantfile ]; then
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-VAGRANT_BOX = 'ubuntu/bionic64'
+VAGRANT_BOX = 'ubuntu/focal64'
 
 Vagrant.configure("2") do |config|
   config.vm.box = VAGRANT_BOX

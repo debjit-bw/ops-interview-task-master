@@ -1,7 +1,7 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-VAGRANT_BOX = 'ubuntu/bionic64'
+VAGRANT_BOX = 'ubuntu/focal64'
 
 Vagrant.configure("2") do |config|
   config.vm.box = VAGRANT_BOX
